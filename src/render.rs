@@ -16,7 +16,7 @@ pub const DEFAULT_ROOM_MAX_ROWS: u32 = 50;
 /// The default scaling factor for the final image, meaning the number of pixels allocated for each room cell
 pub const DEFAULT_SCALE_FACTOR: u32 = 50;
 
-/// An enum representing the 3 terrain types: Plains, Swamps, and Walls
+/// Represents the 3 terrain types: Plains, Swamps, and Walls
 #[derive(Debug)]
 pub enum Terrain {
   Plain,
@@ -24,7 +24,7 @@ pub enum Terrain {
   Wall,
 }
 
-/// An enum representing the various different types of resources that can exist in a room
+/// Represents the various different types of resources that can exist in a room
 #[derive(Debug)]
 pub enum Resource {
   Source,
@@ -37,10 +37,10 @@ pub enum Resource {
   Catalyst,
 }
 
-/// An enum representing the various types of player-buildable structures
+/// Represents the various types of player-buildable structures
 #[derive(Debug)]
 pub enum BuildableStructure {
-  Constructedwall,
+  ConstructedWall,
   Container,
   Controller,
   Extension,
@@ -114,12 +114,12 @@ fn draw_text_number_raw(imgbuf: &mut OutputImage, x: i32, y: i32, text: &str) {
   imageproc::drawing::draw_text_mut(imgbuf, image::Rgba([255,255,255,255]), x, y, scale, &font, text);
 }
 
-/// Draws a Terrain::* tile at a specific cell location
+/// Draws a [Terrain] tile at a specific cell location
 pub fn draw_terrain_tile_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &Terrain) {
   draw_terrain_tile_xy_with_scale_factor(imgbuf, col, row, tile, DEFAULT_SCALE_FACTOR)
 }
 
-/// Draws a Terrain::* tile at a specific cell location with a user-supplied scaling factor
+/// Draws a [Terrain] tile at a specific cell location with a user-supplied scaling factor
 pub fn draw_terrain_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &Terrain, scale_factor: u32) {
   let tile_img_reader_result = match tile {
     Terrain::Plain => Reader::new(Cursor::new(assets_data::TERRAIN_PLAIN_IMG_DATA)).with_guessed_format(),
@@ -130,12 +130,12 @@ pub fn draw_terrain_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32
   draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
 }
 
-/// Draws a Resource::* tile at a specific cell location
+/// Draws a [Resource] tile at a specific cell location
 pub fn draw_resource_tile_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &Resource) {
   draw_resource_tile_xy_with_scale_factor(imgbuf, col, row, tile, DEFAULT_SCALE_FACTOR)
 }
 
-/// Draws a Resource::* tile at a specific cell location with a user-supplied scaling factor
+/// Draws a [Resource] tile at a specific cell location with a user-supplied scaling factor
 pub fn draw_resource_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &Resource, scale_factor: u32) {
   let tile_img_reader_result = match tile {
     Resource::Source    => Reader::new(Cursor::new(assets_data::RESOURCE_SOURCE_IMG_DATA)).with_guessed_format(),
@@ -151,15 +151,15 @@ pub fn draw_resource_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u3
   draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
 }
 
-/// Draws a BuildableStructure::* tile at a specific cell location
+/// Draws a [BuildableStructure] tile at a specific cell location
 pub fn draw_buildablestructure_tile_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &BuildableStructure) {
   draw_buildablestructure_tile_xy_with_scale_factor(imgbuf, col, row, tile, DEFAULT_SCALE_FACTOR)
 }
 
-/// Draws a BuildableStructure::* tile at a specific cell location with a user-supplied scaling factor
+/// Draws a [BuildableStructure] tile at a specific cell location with a user-supplied scaling factor
 pub fn draw_buildablestructure_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &BuildableStructure, scale_factor: u32) {
   let tile_img_reader_result = match tile {
-    BuildableStructure::Constructedwall => Reader::new(Cursor::new(assets_data::STRUCTURE_CONSTRUCTEDWALL_IMG_DATA)).with_guessed_format(),
+    BuildableStructure::ConstructedWall => Reader::new(Cursor::new(assets_data::STRUCTURE_CONSTRUCTEDWALL_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Container       => Reader::new(Cursor::new(assets_data::STRUCTURE_CONTAINER_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Controller      => Reader::new(Cursor::new(assets_data::STRUCTURE_CONTROLLER_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Extension       => Reader::new(Cursor::new(assets_data::STRUCTURE_EXTENSION_IMG_DATA)).with_guessed_format(),
