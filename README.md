@@ -2,7 +2,10 @@
 
 This library provides helper methods for creating room images for the programmable MMO [Screeps](https://screeps.com/), without relying on the in-game renderer.
 
-An example that produces an image `simple.png` that represents an empty room with an Extension, a Source, a Catalyst Mineral, a Swamp, and 3 Walls.
+
+## Example Usage
+
+The following example code produces an image `simple.png` that represents an empty room with an Extension, a Source, a Catalyst Mineral, a Swamp, and 3 Walls.
 
 ```
 use screeps_local_visuals::render;
