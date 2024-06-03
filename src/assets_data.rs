@@ -27,7 +27,7 @@ pub const RESOURCE_ZYNTHIUM_IMG_DATA: &[u8] = include_bytes!("assets/resources/Z
 #[cfg(target_family = "unix")]
 pub const RESOURCE_CATALYST_IMG_DATA: &[u8] = include_bytes!("assets/resources/X.png");
 #[cfg(target_family = "unix")]
-pub const RESOURCE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!("assets/resources/?.png");
+pub const RESOURCE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!("assets/resources/unknown.png");
 
 #[cfg(target_family = "unix")]
 pub const STRUCTURE_CONSTRUCTEDWALL_IMG_DATA: &[u8] = include_bytes!("assets/structures/constructedWall.png");
@@ -94,7 +94,7 @@ pub const RESOURCE_ZYNTHIUM_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\
 #[cfg(target_family = "windows")]
 pub const RESOURCE_CATALYST_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\X.png");
 #[cfg(target_family = "windows")]
-pub const RESOURCE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\?.png");
+pub const RESOURCE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\unknown.png");
 
 #[cfg(target_family = "windows")]
 pub const STRUCTURE_CONSTRUCTEDWALL_IMG_DATA: &[u8] = include_bytes!(r"assets\structures\constructedWall.png");
