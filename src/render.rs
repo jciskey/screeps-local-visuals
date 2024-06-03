@@ -160,6 +160,30 @@ impl TryFrom<StructureType> for BuildableStructure {
     }
 }
 
+impl TryFrom<&OfflineObject> for BuildableStructure {
+  type Error = ();
+
+  #[inline]
+    fn try_from(obj: &OfflineObject) -> Result<BuildableStructure, Self::Error> {
+        Ok(match obj {
+            OfflineObject::ConstructedWall { .. } => BuildableStructure::ConstructedWall,
+            OfflineObject::Controller { .. } => BuildableStructure::Controller,
+            OfflineObject::Extractor { .. } => BuildableStructure::Extractor,
+            OfflineObject::Terminal { .. } => BuildableStructure::Terminal,
+            _                          => BuildableStructure::Unknown,
+        })
+    }
+}
+
+impl TryFrom<OfflineObject> for BuildableStructure {
+  type Error = ();
+
+  #[inline]
+    fn try_from(obj: OfflineObject) -> Result<BuildableStructure, Self::Error> {
+        (&obj).try_into()
+    }
+}
+
 /// Creates an image with default size parameters
 pub fn create_image() -> OutputImage {
   create_image_with_size_params(DEFAULT_ROOM_MAX_COLUMNS, DEFAULT_ROOM_MAX_ROWS, DEFAULT_SCALE_FACTOR)
