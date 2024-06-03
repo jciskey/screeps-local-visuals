@@ -1,6 +1,6 @@
 [package]
 name = "screeps-local-visuals"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Joe Ciskey"]
 description = "A library for the programmable MMO Screeps that allows tools to produce images of game data without relying on the game engine for rendering"
@@ -17,3 +17,5 @@ image = "0.24.9"
 imageproc = "0.23.0"
 num-complex = "0.4.5"
 rusttype = "0.9.3"
+screeps-game-api = "0.21"
+screeps-game-utils = "0.21"

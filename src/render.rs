@@ -4,6 +4,18 @@ use image::io::Reader;
 
 use crate::assets_data;
 
+pub use screeps::constants::Terrain;
+
+use screeps::constants::{
+  ResourceType,
+  structure::StructureType
+};
+
+use screeps::local::LocalCostMatrix;
+use screeps::objects::Source;
+
+use screeps_utils::offline_map::OfflineObject;
+
 /// A helpful type alias for the type of images this library operates on
 pub type OutputImage = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
@@ -16,14 +28,6 @@ pub const DEFAULT_ROOM_MAX_ROWS: u32 = 50;
 /// The default scaling factor for the final image, meaning the number of pixels allocated for each room cell
 pub const DEFAULT_SCALE_FACTOR: u32 = 50;
 
-/// Represents the 3 terrain types: Plains, Swamps, and Walls
-#[derive(Debug)]
-pub enum Terrain {
-  Plain,
-  Swamp,
-  Wall,
-}
-
 /// Represents the various different types of resources that can exist in a room
 #[derive(Debug)]
 pub enum Resource {
@@ -35,6 +39,7 @@ pub enum Resource {
   Utrium,
   Zynthium,
   Catalyst,
+  Unknown,
 }
 
 /// Represents the various types of player-buildable structures
@@ -50,13 +55,109 @@ pub enum BuildableStructure {
   Link,
   Nuker,
   Observer,
-  Powerspawn,
+  PowerSpawn,
   Rampart,
   Road,
   Spawn,
   Storage,
   Terminal,
   Tower,
+  Unknown,
+}
+
+impl From<Source> for Resource {
+    #[inline]
+    fn from(_source: Source) -> Resource {
+      Resource::Source
+    }
+}
+
+impl TryFrom<&ResourceType> for Resource {
+    type Error = ();
+
+    #[inline]
+    fn try_from(resource_type: &ResourceType) -> Result<Resource, Self::Error> {
+        Ok(match resource_type {
+            ResourceType::Hydrogen   => Resource::Hydrogen,
+            ResourceType::Oxygen     => Resource::Oxygen,
+            ResourceType::Keanium    => Resource::Keanium,
+            ResourceType::Lemergium  => Resource::Lemergium,
+            ResourceType::Utrium     => Resource::Utrium,
+            ResourceType::Zynthium   => Resource::Zynthium,
+            ResourceType::Catalyst   => Resource::Catalyst,
+            _                        => Resource::Unknown,
+        })
+    }
+}
+
+impl TryFrom<ResourceType> for Resource {
+    type Error = ();
+
+    #[inline]
+    fn try_from(resource_type: ResourceType) -> Result<Resource, Self::Error> {
+        (&resource_type).try_into()
+    }
+}
+
+impl TryFrom<&OfflineObject> for Resource {
+    type Error = ();
+
+    #[inline]
+    fn try_from(obj: &OfflineObject) -> Result<Resource, Self::Error> {
+      match obj {
+        OfflineObject::Source { .. } => Ok(Resource::Source),
+        OfflineObject::Mineral { mineral_type, .. } => {
+          Ok(match mineral_type {
+              ResourceType::Hydrogen   => Resource::Hydrogen,
+              ResourceType::Oxygen     => Resource::Oxygen,
+              ResourceType::Keanium    => Resource::Keanium,
+              ResourceType::Lemergium  => Resource::Lemergium,
+              ResourceType::Utrium     => Resource::Utrium,
+              ResourceType::Zynthium   => Resource::Zynthium,
+              ResourceType::Catalyst   => Resource::Catalyst,
+              _                        => Resource::Unknown,
+          })
+        },
+        _ => Ok(Resource::Unknown)
+      }
+    }
+}
+
+impl TryFrom<OfflineObject> for Resource {
+    type Error = ();
+
+    #[inline]
+    fn try_from(obj: OfflineObject) -> Result<Resource, Self::Error> {
+        (&obj).try_into()
+    }
+}
+
+impl TryFrom<StructureType> for BuildableStructure {
+    type Error = ();
+
+    #[inline]
+    fn try_from(structure_type: StructureType) -> Result<BuildableStructure, Self::Error> {
+        Ok(match structure_type {
+            StructureType::Wall        => BuildableStructure::ConstructedWall,
+            StructureType::Container   => BuildableStructure::Container,
+            StructureType::Controller  => BuildableStructure::Controller,
+            StructureType::Extension   => BuildableStructure::Extension,
+            StructureType::Extractor   => BuildableStructure::Extractor,
+            StructureType::Factory     => BuildableStructure::Factory,
+            StructureType::Lab         => BuildableStructure::Lab,
+            StructureType::Link        => BuildableStructure::Link,
+            StructureType::Nuker       => BuildableStructure::Nuker,
+            StructureType::Observer    => BuildableStructure::Observer,
+            StructureType::PowerSpawn  => BuildableStructure::PowerSpawn,
+            StructureType::Rampart     => BuildableStructure::Rampart,
+            StructureType::Road        => BuildableStructure::Road,
+            StructureType::Spawn       => BuildableStructure::Spawn,
+            StructureType::Storage     => BuildableStructure::Storage,
+            StructureType::Terminal    => BuildableStructure::Terminal,
+            StructureType::Tower       => BuildableStructure::Tower,
+            _                          => BuildableStructure::Unknown,
+        })
+    }
 }
 
 /// Creates an image with default size parameters
@@ -97,21 +198,117 @@ pub fn draw_grid_with_scale_factor(imgbuf: &mut OutputImage, scale_factor: u32) 
 
 /// Draws a text number on a default-sized image at a specific cell location
 pub fn draw_text_number_xy(imgbuf: &mut OutputImage, col: u32, row: u32, text: &str) {
-  draw_text_number_xy_with_scale_factor(imgbuf, col, row, text, DEFAULT_SCALE_FACTOR)
+  draw_text_number_xy_with_scale_factor(imgbuf, col, row, text, DEFAULT_SCALE_FACTOR, DEFAULT_SCALE_FACTOR)
 }
 
 /// Draws a text number on a user-sized image at a specific cell location
-pub fn draw_text_number_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, text: &str, scale_factor: u32) {
+pub fn draw_text_number_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, text: &str, scale_factor: u32, text_scale_factor: u32) {
   let x = (col * scale_factor + 2).try_into().unwrap();
   let y = (row * scale_factor + 2).try_into().unwrap();
-  draw_text_number_raw(imgbuf, x, y, text);
+  draw_text_number_raw(imgbuf, x, y, text, text_scale_factor as f32);
 }
 
 /// Underlying function for drawing numbers on an image at a specific cell location
-fn draw_text_number_raw(imgbuf: &mut OutputImage, x: i32, y: i32, text: &str) {
-  let scale = rusttype::Scale::uniform(15.0);
+fn draw_text_number_raw(imgbuf: &mut OutputImage, x: i32, y: i32, text: &str, text_scale_factor: f32) {
+  // let scale = rusttype::Scale::uniform(15.0);
+  let scale = rusttype::Scale::uniform(text_scale_factor);
   let font = rusttype::Font::try_from_bytes(assets_data::FREE_MONO_FONT_DATA).expect("Could not load FreeMono font");
   imageproc::drawing::draw_text_mut(imgbuf, image::Rgba([255,255,255,255]), x, y, scale, &font, text);
+}
+
+pub fn draw_cost_matrix(imgbuf: &mut OutputImage, cm: LocalCostMatrix, v_min: u8, v_max: u8, b_max: u8, a: u8, skip_out_of_bounds_values: bool) {
+  draw_cost_matrix_with_scale_factor(imgbuf, cm, v_min, v_max, b_max, a, DEFAULT_SCALE_FACTOR, skip_out_of_bounds_values)
+}
+
+fn draw_cost_matrix_with_scale_factor(imgbuf: &mut OutputImage, cm: LocalCostMatrix, v_min: u8, v_max: u8, b_max: u8, a: u8, scale_factor: u32, skip_out_of_bounds_values: bool) {
+  let alpha_overlay = get_cost_matrix_alpha_overlay(&cm, imgbuf.width(), imgbuf.height(), scale_factor, v_min, v_max, b_max, a, skip_out_of_bounds_values);
+  image::imageops::overlay(imgbuf, &alpha_overlay, 0, 0);
+
+  for (position, value) in cm.iter() {
+    if value == 0 {
+      continue;
+    }
+
+    if skip_out_of_bounds_values {
+      if value > v_max {
+        continue;
+      }
+
+      if value < v_min {
+        continue;
+      }
+    }
+
+    let col = position.x.u8();
+    let row = position.y.u8();
+
+    let text = value.to_string();
+
+    let text_scale_factor = if value > 9 {
+      ((scale_factor as f32) * 0.75) as u32
+    }
+    else {
+      scale_factor
+    };
+
+    draw_text_number_xy_with_scale_factor(imgbuf, col.into(), row.into(), &text, scale_factor, text_scale_factor);
+  }
+}
+
+fn get_cost_matrix_alpha_overlay(cm: &LocalCostMatrix, overlay_width: u32, overlay_height: u32, scale_factor: u32, v_min: u8, v_max: u8, b_max: u8, a: u8, skip_out_of_bounds_values: bool) -> OutputImage {
+  let mut alpha_overlay = image::ImageBuffer::new(overlay_width, overlay_height);
+
+  for (position, value) in cm.iter() {
+    let clamped_value = if value > v_max {
+      if skip_out_of_bounds_values {
+        continue;
+      }
+      v_max
+    }
+    else {
+      if value < v_min {
+        if skip_out_of_bounds_values {
+          continue;
+        }
+        v_min
+      }
+      else {
+        value
+      }
+    };
+
+    let range = (v_max - v_min) as f32;
+
+    let b = b_max - lerp(0.0, b_max as f32, ((clamped_value - v_min) as f32)/range) as u8;
+
+    let others = lerp(b_max as f32, 0.0, (b as f32)/(b_max as f32)) as u8;
+
+    let alpha = if value == 0 {
+      0
+    }
+    else {
+      a
+    };
+
+    let rgba = image::Rgba([others, others, b, alpha]);
+    // let rgba = image::Rgba([0, 0, 255, a]);
+
+    let x = position.x.u8();
+    let y = position.y.u8();
+
+    let x_start = (x as u32) * scale_factor + 1;
+    let y_start = (y as u32) * scale_factor + 1;
+    let x_end = x_start + scale_factor;
+    let y_end = y_start + scale_factor;
+
+    for draw_x in x_start..x_end {
+      for draw_y in y_start..y_end {
+        alpha_overlay.put_pixel(draw_x, draw_y, rgba);
+      }
+    }
+  }
+
+  alpha_overlay
 }
 
 /// Draws a [Terrain] tile at a specific cell location
@@ -146,6 +343,7 @@ pub fn draw_resource_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u3
     Resource::Utrium    => Reader::new(Cursor::new(assets_data::RESOURCE_UTRIUM_IMG_DATA)).with_guessed_format(),
     Resource::Zynthium  => Reader::new(Cursor::new(assets_data::RESOURCE_ZYNTHIUM_IMG_DATA)).with_guessed_format(),
     Resource::Catalyst  => Reader::new(Cursor::new(assets_data::RESOURCE_CATALYST_IMG_DATA)).with_guessed_format(),
+    Resource::Unknown   => Reader::new(Cursor::new(assets_data::RESOURCE_UNKNOWN_IMG_DATA)).with_guessed_format(),
   };
 
   draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
@@ -169,13 +367,14 @@ pub fn draw_buildablestructure_tile_xy_with_scale_factor(imgbuf: &mut OutputImag
     BuildableStructure::Link            => Reader::new(Cursor::new(assets_data::STRUCTURE_LINK_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Nuker           => Reader::new(Cursor::new(assets_data::STRUCTURE_NUKER_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Observer        => Reader::new(Cursor::new(assets_data::STRUCTURE_OBSERVER_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Powerspawn      => Reader::new(Cursor::new(assets_data::STRUCTURE_POWERSPAWN_IMG_DATA)).with_guessed_format(),
+    BuildableStructure::PowerSpawn      => Reader::new(Cursor::new(assets_data::STRUCTURE_POWERSPAWN_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Rampart         => Reader::new(Cursor::new(assets_data::STRUCTURE_RAMPART_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Road            => Reader::new(Cursor::new(assets_data::STRUCTURE_ROAD_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Spawn           => Reader::new(Cursor::new(assets_data::STRUCTURE_SPAWN_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Storage         => Reader::new(Cursor::new(assets_data::STRUCTURE_STORAGE_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Terminal        => Reader::new(Cursor::new(assets_data::STRUCTURE_TERMINAL_IMG_DATA)).with_guessed_format(),
     BuildableStructure::Tower           => Reader::new(Cursor::new(assets_data::STRUCTURE_TOWER_IMG_DATA)).with_guessed_format(),
+    BuildableStructure::Unknown         => Reader::new(Cursor::new(assets_data::STRUCTURE_UNKNOWN_IMG_DATA)).with_guessed_format(),
   };
 
   draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
@@ -201,4 +400,8 @@ fn draw_tile_img_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile_img_reade
       image::imageops::overlay(imgbuf, &tile_img, x, y);
     }
   };
+}
+
+fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
+  return (1.0 - t) * v0 + t * v1;
 }

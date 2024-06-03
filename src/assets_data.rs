@@ -26,6 +26,8 @@ pub const RESOURCE_UTRIUM_IMG_DATA: &[u8] = include_bytes!("assets/resources/U.p
 pub const RESOURCE_ZYNTHIUM_IMG_DATA: &[u8] = include_bytes!("assets/resources/Z.png");
 #[cfg(target_family = "unix")]
 pub const RESOURCE_CATALYST_IMG_DATA: &[u8] = include_bytes!("assets/resources/X.png");
+#[cfg(target_family = "unix")]
+pub const RESOURCE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!("assets/resources/?.png");
 
 #[cfg(target_family = "unix")]
 pub const STRUCTURE_CONSTRUCTEDWALL_IMG_DATA: &[u8] = include_bytes!("assets/structures/constructedWall.png");
@@ -61,6 +63,8 @@ pub const STRUCTURE_STORAGE_IMG_DATA: &[u8] = include_bytes!("assets/structures/
 pub const STRUCTURE_TERMINAL_IMG_DATA: &[u8] = include_bytes!("assets/structures/terminal.png");
 #[cfg(target_family = "unix")]
 pub const STRUCTURE_TOWER_IMG_DATA: &[u8] = include_bytes!("assets/structures/tower.png");
+#[cfg(target_family = "unix")]
+pub const STRUCTURE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!("assets/structures/icon.png");
 
 
 #[cfg(target_family = "windows")]
@@ -89,6 +93,8 @@ pub const RESOURCE_UTRIUM_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\U.
 pub const RESOURCE_ZYNTHIUM_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\Z.png");
 #[cfg(target_family = "windows")]
 pub const RESOURCE_CATALYST_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\X.png");
+#[cfg(target_family = "windows")]
+pub const RESOURCE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!(r"assets\resources\?.png");
 
 #[cfg(target_family = "windows")]
 pub const STRUCTURE_CONSTRUCTEDWALL_IMG_DATA: &[u8] = include_bytes!(r"assets\structures\constructedWall.png");
@@ -124,3 +130,5 @@ pub const STRUCTURE_STORAGE_IMG_DATA: &[u8] = include_bytes!(r"assets\structures
 pub const STRUCTURE_TERMINAL_IMG_DATA: &[u8] = include_bytes!(r"assets\structures\terminal.png");
 #[cfg(target_family = "windows")]
 pub const STRUCTURE_TOWER_IMG_DATA: &[u8] = include_bytes!(r"assets\structures\tower.png");
+#[cfg(target_family = "windows")]
+pub const STRUCTURE_UNKNOWN_IMG_DATA: &[u8] = include_bytes!(r"assets\structures\icon.png");
