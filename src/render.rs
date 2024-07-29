@@ -13,6 +13,7 @@ use screeps::constants::{
 
 use screeps::local::LocalCostMatrix;
 use screeps::objects::Source;
+use screeps::constants::ROOM_SIZE;
 
 use screeps_utils::offline_map::OfflineObject;
 
@@ -20,10 +21,10 @@ use screeps_utils::offline_map::OfflineObject;
 pub type OutputImage = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
 /// The default number of columns in a room (x-coordinate)
-pub const DEFAULT_ROOM_MAX_COLUMNS: u32 = 50;
+pub const DEFAULT_ROOM_MAX_COLUMNS: u32 = ROOM_SIZE as u32;
 
 /// The default number of rows in a room (y-coordinate)
-pub const DEFAULT_ROOM_MAX_ROWS: u32 = 50;
+pub const DEFAULT_ROOM_MAX_ROWS: u32 = ROOM_SIZE as u32;
 
 /// The default scaling factor for the final image, meaning the number of pixels allocated for each room cell
 pub const DEFAULT_SCALE_FACTOR: u32 = 50;
@@ -157,6 +158,15 @@ impl TryFrom<StructureType> for BuildableStructure {
             StructureType::Tower       => BuildableStructure::Tower,
             _                          => BuildableStructure::Unknown,
         })
+    }
+}
+
+impl TryFrom<&StructureType> for BuildableStructure {
+    type Error = ();
+
+    #[inline]
+    fn try_from(structure_type: &StructureType) -> Result<BuildableStructure, Self::Error> {
+        (*structure_type).try_into()
     }
 }
 
@@ -424,6 +434,46 @@ fn draw_tile_img_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile_img_reade
       image::imageops::overlay(imgbuf, &tile_img, x, y);
     }
   };
+}
+
+pub fn get_tile_alpha_overlay(overlay_width: u32, overlay_height: u32, scale_factor: u32, r: u8, g: u8, b: u8, a: u8, x: u8, y: u8) -> OutputImage {
+  let mut alpha_overlay = image::ImageBuffer::new(overlay_width, overlay_height);
+
+  let rgba = image::Rgba([r, g, b, a]);
+
+  let x_start = (x as u32) * scale_factor + 1;
+  let y_start = (y as u32) * scale_factor + 1;
+  let x_end = x_start + scale_factor;
+  let y_end = y_start + scale_factor;
+
+  for draw_x in x_start..x_end {
+    for draw_y in y_start..y_end {
+      alpha_overlay.put_pixel(draw_x, draw_y, rgba);
+    }
+  }
+
+  alpha_overlay
+}
+
+pub fn get_tile_alpha_overlay_multi_tile(overlay_width: u32, overlay_height: u32, scale_factor: u32, r: u8, g: u8, b: u8, a: u8, tiles: &[(u8, u8)]) -> OutputImage {
+  let mut alpha_overlay = image::ImageBuffer::new(overlay_width, overlay_height);
+
+  let rgba = image::Rgba([r, g, b, a]);
+
+  for (x, y) in tiles {
+    let x_start = (*x as u32) * scale_factor + 1;
+    let y_start = (*y as u32) * scale_factor + 1;
+    let x_end = x_start + scale_factor;
+    let y_end = y_start + scale_factor;
+
+    for draw_x in x_start..x_end {
+      for draw_y in y_start..y_end {
+        alpha_overlay.put_pixel(draw_x, draw_y, rgba);
+      }
+    }
+  }
+
+  alpha_overlay
 }
 
 fn lerp(v0: f32, v1: f32, t: f32) -> f32 {
