@@ -1,7 +1,3 @@
-
-use std::io::Cursor;
-use image::io::Reader;
-
 use crate::assets_data;
 
 pub use screeps::constants::Terrain;
@@ -18,6 +14,8 @@ use screeps::constants::ROOM_SIZE;
 use screeps_utils::offline_map::OfflineObject;
 
 /// A helpful type alias for the type of images this library operates on
+///
+/// This is the same as RgbaImage.
 pub type OutputImage = image::ImageBuffer<image::Rgba<u8>, Vec<u8>>;
 
 /// The default number of columns in a room (x-coordinate)
@@ -73,6 +71,10 @@ impl From<Source> for Resource {
     }
 }
 
+// TODO: I'm pretty sure you only need to implement for the reference.
+// once compiling, try taking it out and seeing what happens.
+// 
+// Also, like none of these fail. What are they being used with?
 impl TryFrom<&ResourceType> for Resource {
     type Error = ();
 
@@ -230,6 +232,46 @@ pub fn draw_grid_with_scale_factor(imgbuf: &mut OutputImage, scale_factor: u32) 
   }
 }
 
+/// Calculates a scale that fits the given text within the given
+/// square area.
+///
+/// A new scale will only be calculated if it needs to be smaller to
+/// fit within the cell. (Treating the given cell size as the scale
+/// factor.)
+///
+/// Also returns the width and height of the text with the new scale.
+fn calculate_centered_text_scale(font: &rusttype::Font, area: u32, text: &str) -> (rusttype::Scale, u32, u32) {
+  let default_scale = rusttype::Scale::uniform(area as f32);
+  let (x,y) = imageproc::drawing::text_size(default_scale, font, text);
+  if x > area as i32 {
+    let ratio = (area as f32) / (x as f32);
+    let new_scale_factor = area as f32 * ratio;
+    let new_scale = rusttype::Scale::uniform(new_scale_factor);
+    let (x,y) = imageproc::drawing::text_size(new_scale, font, text);
+    (new_scale, x as u32, y as u32)
+  } else {
+    (default_scale, x as u32, y as u32)
+  }
+}
+
+/// Draws a centered text number on a default-sized image at a specific cell location.
+///
+/// Will scale the text down to fit.
+pub fn draw_centered_text_number_xy(imgbuf: &mut OutputImage, col: u32, row: u32, text: &str) {
+  let font = &assets_data::FREE_MONO_FONT;
+  let cell_size = DEFAULT_SCALE_FACTOR; // cell_size in pixels.
+  // we want some borders between text, so we need to define an area
+  // we'll draw the text within.
+  let border_size = 2;
+  let text_area = cell_size - 2*border_size;
+  let (scale, width, height) = calculate_centered_text_scale(font, text_area, text);
+  let x_offset = (cell_size - width)/2;
+  let y_offset = (cell_size - height)/2;
+  let x = (col * cell_size + border_size + x_offset).try_into().unwrap();
+  let y = (row * cell_size + border_size + y_offset).try_into().unwrap();
+  imageproc::drawing::draw_text_mut(imgbuf, image::Rgba([255,255,255,255]), x, y, scale, &font, text);
+}
+
 /// Draws a text number on a default-sized image at a specific cell location
 pub fn draw_text_number_xy(imgbuf: &mut OutputImage, col: u32, row: u32, text: &str) {
   draw_text_number_xy_with_scale_factor(imgbuf, col, row, text, DEFAULT_SCALE_FACTOR, DEFAULT_SCALE_FACTOR)
@@ -246,7 +288,7 @@ pub fn draw_text_number_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32,
 fn draw_text_number_raw(imgbuf: &mut OutputImage, x: i32, y: i32, text: &str, text_scale_factor: f32) {
   // let scale = rusttype::Scale::uniform(15.0);
   let scale = rusttype::Scale::uniform(text_scale_factor);
-  let font = rusttype::Font::try_from_bytes(assets_data::FREE_MONO_FONT_DATA).expect("Could not load FreeMono font");
+  let font = &assets_data::FREE_MONO_FONT;
   imageproc::drawing::draw_text_mut(imgbuf, image::Rgba([255,255,255,255]), x, y, scale, &font, text);
 }
 
@@ -352,13 +394,13 @@ pub fn draw_terrain_tile_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile: 
 
 /// Draws a [Terrain] tile at a specific cell location with a user-supplied scaling factor
 pub fn draw_terrain_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &Terrain, scale_factor: u32) {
-  let tile_img_reader_result = match tile {
-    Terrain::Plain => Reader::new(Cursor::new(assets_data::TERRAIN_PLAIN_IMG_DATA)).with_guessed_format(),
-    Terrain::Swamp => Reader::new(Cursor::new(assets_data::TERRAIN_SWAMP_IMG_DATA)).with_guessed_format(),
-    Terrain::Wall  => Reader::new(Cursor::new(assets_data::TERRAIN_WALL_IMG_DATA)).with_guessed_format(),
+  let tile_img: &OutputImage = match tile {
+    Terrain::Plain => &assets_data::TERRAIN_PLAIN_IMG,
+    Terrain::Swamp => &assets_data::TERRAIN_SWAMP_IMG,
+    Terrain::Wall  => &assets_data::TERRAIN_WALL_IMG,
   };
 
-  draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
+  draw_tile_img_xy(imgbuf, col, row, tile_img, scale_factor);
 }
 
 /// Draws a [Resource] tile at a specific cell location
@@ -368,19 +410,19 @@ pub fn draw_resource_tile_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile:
 
 /// Draws a [Resource] tile at a specific cell location with a user-supplied scaling factor
 pub fn draw_resource_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &Resource, scale_factor: u32) {
-  let tile_img_reader_result = match tile {
-    Resource::Source    => Reader::new(Cursor::new(assets_data::RESOURCE_SOURCE_IMG_DATA)).with_guessed_format(),
-    Resource::Hydrogen  => Reader::new(Cursor::new(assets_data::RESOURCE_HYDROGEN_IMG_DATA)).with_guessed_format(),
-    Resource::Oxygen    => Reader::new(Cursor::new(assets_data::RESOURCE_OXYGEN_IMG_DATA)).with_guessed_format(),
-    Resource::Keanium   => Reader::new(Cursor::new(assets_data::RESOURCE_KEANIUM_IMG_DATA)).with_guessed_format(),
-    Resource::Lemergium => Reader::new(Cursor::new(assets_data::RESOURCE_LEMERGIUM_IMG_DATA)).with_guessed_format(),
-    Resource::Utrium    => Reader::new(Cursor::new(assets_data::RESOURCE_UTRIUM_IMG_DATA)).with_guessed_format(),
-    Resource::Zynthium  => Reader::new(Cursor::new(assets_data::RESOURCE_ZYNTHIUM_IMG_DATA)).with_guessed_format(),
-    Resource::Catalyst  => Reader::new(Cursor::new(assets_data::RESOURCE_CATALYST_IMG_DATA)).with_guessed_format(),
-    Resource::Unknown   => Reader::new(Cursor::new(assets_data::RESOURCE_UNKNOWN_IMG_DATA)).with_guessed_format(),
+  let tile_img = match tile {
+    Resource::Source    => &*assets_data::RESOURCE_SOURCE_IMG,
+    Resource::Hydrogen  => &*assets_data::RESOURCE_HYDROGEN_IMG,
+    Resource::Oxygen    => &*assets_data::RESOURCE_OXYGEN_IMG,
+    Resource::Keanium   => &*assets_data::RESOURCE_KEANIUM_IMG,
+    Resource::Lemergium => &*assets_data::RESOURCE_LEMERGIUM_IMG,
+    Resource::Utrium    => &*assets_data::RESOURCE_UTRIUM_IMG,
+    Resource::Zynthium  => &*assets_data::RESOURCE_ZYNTHIUM_IMG,
+    Resource::Catalyst  => &*assets_data::RESOURCE_CATALYST_IMG,
+    Resource::Unknown   => &*assets_data::RESOURCE_UNKNOWN_IMG,
   };
 
-  draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
+  draw_tile_img_xy(imgbuf, col, row, &tile_img, scale_factor);
 }
 
 /// Draws a [BuildableStructure] tile at a specific cell location
@@ -390,50 +432,46 @@ pub fn draw_buildablestructure_tile_xy(imgbuf: &mut OutputImage, col: u32, row: 
 
 /// Draws a [BuildableStructure] tile at a specific cell location with a user-supplied scaling factor
 pub fn draw_buildablestructure_tile_xy_with_scale_factor(imgbuf: &mut OutputImage, col: u32, row: u32, tile: &BuildableStructure, scale_factor: u32) {
-  let tile_img_reader_result = match tile {
-    BuildableStructure::ConstructedWall => Reader::new(Cursor::new(assets_data::STRUCTURE_CONSTRUCTEDWALL_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Container       => Reader::new(Cursor::new(assets_data::STRUCTURE_CONTAINER_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Controller      => Reader::new(Cursor::new(assets_data::STRUCTURE_CONTROLLER_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Extension       => Reader::new(Cursor::new(assets_data::STRUCTURE_EXTENSION_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Extractor       => Reader::new(Cursor::new(assets_data::STRUCTURE_EXTRACTOR_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Factory         => Reader::new(Cursor::new(assets_data::STRUCTURE_FACTORY_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Lab             => Reader::new(Cursor::new(assets_data::STRUCTURE_LAB_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Link            => Reader::new(Cursor::new(assets_data::STRUCTURE_LINK_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Nuker           => Reader::new(Cursor::new(assets_data::STRUCTURE_NUKER_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Observer        => Reader::new(Cursor::new(assets_data::STRUCTURE_OBSERVER_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::PowerSpawn      => Reader::new(Cursor::new(assets_data::STRUCTURE_POWERSPAWN_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Rampart         => Reader::new(Cursor::new(assets_data::STRUCTURE_RAMPART_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Road            => Reader::new(Cursor::new(assets_data::STRUCTURE_ROAD_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Spawn           => Reader::new(Cursor::new(assets_data::STRUCTURE_SPAWN_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Storage         => Reader::new(Cursor::new(assets_data::STRUCTURE_STORAGE_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Terminal        => Reader::new(Cursor::new(assets_data::STRUCTURE_TERMINAL_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Tower           => Reader::new(Cursor::new(assets_data::STRUCTURE_TOWER_IMG_DATA)).with_guessed_format(),
-    BuildableStructure::Unknown         => Reader::new(Cursor::new(assets_data::STRUCTURE_UNKNOWN_IMG_DATA)).with_guessed_format(),
-  };
+  use BuildableStructure::*;
+  use assets_data::*;
 
-  draw_tile_img_xy(imgbuf, col, row, tile_img_reader_result, scale_factor);
+  let tile_image = match tile {
+    ConstructedWall => &*STRUCTURE_CONSTRUCTEDWALL_IMG,
+    Container       => &*STRUCTURE_CONTAINER_IMG,
+    Controller      => &*STRUCTURE_CONTROLLER_IMG,
+    Extension       => &*STRUCTURE_EXTENSION_IMG,
+    Extractor       => &*STRUCTURE_EXTRACTOR_IMG,
+    Factory         => &*STRUCTURE_FACTORY_IMG,
+    Lab             => &*STRUCTURE_LAB_IMG,
+    Link            => &*STRUCTURE_LINK_IMG,
+    Nuker           => &*STRUCTURE_NUKER_IMG,
+    Observer        => &*STRUCTURE_OBSERVER_IMG,
+    PowerSpawn      => &*STRUCTURE_POWERSPAWN_IMG,
+    Rampart         => &*STRUCTURE_RAMPART_IMG,
+    Road            => &*STRUCTURE_ROAD_IMG,
+    Spawn           => &*STRUCTURE_SPAWN_IMG,
+    Storage         => &*STRUCTURE_STORAGE_IMG,
+    Terminal        => &*STRUCTURE_TERMINAL_IMG,
+    Tower           => &*STRUCTURE_TOWER_IMG,
+    Unknown         => &*STRUCTURE_UNKNOWN_IMG,
+  };
+  draw_tile_img_xy(imgbuf, col, row, tile_image, scale_factor);
 }
 
 /// Underlying helper function to draw a tile image at a specific cell location
-fn draw_tile_img_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile_img_reader_result: Result<Reader<Cursor<&[u8]>>, std::io::Error>, scale_factor: u32) {
-
-  if let Ok(tile_img_reader) = tile_img_reader_result {
-    let tile_img_result = tile_img_reader.decode();
-    if let Ok(tile_img_dynamic) = tile_img_result {
-      let mut tile_img = tile_img_dynamic.to_rgba8();
-
-      let new_width = scale_factor;
-      let new_height = scale_factor;
-      if (new_width != tile_img.width()) | (new_height != tile_img.height())  {
-        tile_img = image::imageops::resize(&tile_img, new_width, new_height, image::imageops::FilterType::Nearest);
-      }
-
-      let x = (col * scale_factor + 1).try_into().unwrap();
-      let y = (row * scale_factor + 1).try_into().unwrap();
-
-      image::imageops::overlay(imgbuf, &tile_img, x, y);
-    }
+fn draw_tile_img_xy(imgbuf: &mut OutputImage, col: u32, row: u32, tile_img: &OutputImage, scale_factor: u32) {
+  let new_width = scale_factor;
+  let new_height = scale_factor;
+  let tile_img = if (new_width != tile_img.width()) | (new_height != tile_img.height()) {
+    &image::imageops::resize(tile_img, new_width, new_height, image::imageops::FilterType::Nearest)
+  } else {
+    tile_img
   };
+
+  let x = (col * scale_factor + 1).try_into().unwrap();
+  let y = (row * scale_factor + 1).try_into().unwrap();
+
+  image::imageops::overlay(imgbuf, tile_img, x, y);
 }
 
 pub fn get_tile_alpha_overlay(overlay_width: u32, overlay_height: u32, scale_factor: u32, r: u8, g: u8, b: u8, a: u8, x: u8, y: u8) -> OutputImage {
